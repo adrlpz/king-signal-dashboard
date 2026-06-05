@@ -81,6 +81,10 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
         Overview
       </button>
+      <button @click="tab='analisa'" :class="tab==='analisa' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Analisa
+      </button>
       <button @click="tab='signals'" :class="tab==='signals' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         Sinyal
@@ -103,6 +107,7 @@
       <!-- DESKTOP TAB BAR -->
       <div class="hidden md:flex items-center gap-1 mb-6 bg-surface rounded-lg p-1 w-fit">
         <button @click="tab='overview'" :class="tab==='overview' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Overview</button>
+        <button @click="tab='analisa'" :class="tab==='analisa' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">🔬 Analisa</button>
         <button @click="tab='signals'" :class="tab==='signals' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Sinyal</button>
         <button @click="tab='history'" :class="tab==='history' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">History</button>
         <button @click="tab='analytics'" :class="tab==='analytics' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Statistik</button>
@@ -149,38 +154,167 @@
           </template>
         </div>
 
-        <!-- Signal Feed -->
-        <div class="bg-card border border-border rounded-xl overflow-hidden">
-          <div class="px-5 py-3 border-b border-border flex items-center justify-between">
-            <h3 class="text-sm font-medium text-muted">📡 Signal Feed (24h)</h3>
-            <span class="text-xs text-muted" x-text="feed.length + ' sinyal'"></span>
+        <!-- Signal Feed removed -->
+
+      
+      <!-- ═══════════ TAB: ANALISA MANUAL ═══════════ -->
+      <div x-show="tab==='analisa'" x-transition class="fade-in">
+        <div class="max-w-4xl mx-auto">
+          <!-- Pair & TF Selector -->
+          <div class="bg-card border border-border rounded-xl p-6 mb-6">
+            <h2 class="text-lg font-bold text-white mb-4">🔬 Analisa Manual</h2>
+            <p class="text-sm text-muted mb-6">Pilih pair dan timeframe untuk melihat analisa terbaru dari King Signal engine.</p>
+            
+            <div class="grid sm:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label class="text-xs text-muted mb-2 block">Pair</label>
+                <select x-model="manualPair" class="w-full bg-surface border border-border text-white text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-neon/50">
+                  <option value="BTCUSDT">BTC / USDT</option>
+                  <option value="ETHUSDT">ETH / USDT</option>
+                  <option value="BNBUSDT">BNB / USDT</option>
+                  <option value="SOLUSDT">SOL / USDT</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-muted mb-2 block">Timeframe</label>
+                <select x-model="manualTf" class="w-full bg-surface border border-border text-white text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-neon/50">
+                  <option value="5m">5 Menit</option>
+                  <option value="15m">15 Menit</option>
+                  <option value="30m">30 Menit</option>
+                  <option value="1h">1 Jam</option>
+                  <option value="4h">4 Jam</option>
+                </select>
+              </div>
+              <div class="flex items-end">
+                <button @click="runManualAnalysis()" :disabled="manualLoading" class="w-full bg-neon text-bg font-bold rounded-lg px-4 py-3 hover:bg-acid transition disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span x-show="!manualLoading">🔍 Analisa Sekarang</span>
+                  <span x-show="manualLoading">Loading...</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick pair buttons -->
+            <div class="flex flex-wrap gap-2">
+              <template x-for="p in ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT']" :key="p">
+                <button @click="manualPair=p" :class="manualPair===p ? 'bg-neon/20 text-neon border-neon/30' : 'bg-surface text-muted border-border'" class="px-3 py-1.5 text-xs rounded-lg border font-medium transition" x-text="p.replace('USDT','')"></button>
+              </template>
+              <span class="text-border mx-1">|</span>
+              <template x-for="tf in ['5m','15m','30m','1h','4h']" :key="tf">
+                <button @click="manualTf=tf" :class="manualTf===tf ? 'bg-acid/20 text-acid border-acid/30' : 'bg-surface text-muted border-border'" class="px-3 py-1.5 text-xs rounded-lg border font-medium transition" x-text="tf"></button>
+              </template>
+            </div>
           </div>
-          <div class="max-h-96 overflow-y-auto">
-            <template x-for="s in feed" :key="s.id">
-              <div class="px-5 py-3 border-b border-border/30 hover:bg-surface/50 transition cursor-pointer" @click="selectedPair=s.pair; selectedTf=s.timeframe; loadSignal(); tab='signals'">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <span class="text-xs px-2 py-0.5 rounded font-bold" :class="s.direction==='LONG' ? 'bg-neon/10 text-neon' : 'bg-pink/10 text-pink'" x-text="s.direction"></span>
-                    <span class="text-sm font-bold text-white" x-text="s.pair.replace('USDT','')"></span>
-                    <span class="text-xs text-muted" x-text="s.timeframe"></span>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="text-right hidden sm:block">
-                      <div class="text-xs text-muted">Confidence</div>
-                      <div class="text-sm font-mono font-bold" :class="s.confidence >= 60 ? 'text-neon' : s.confidence >= 40 ? 'text-acid' : 'text-muted'" x-text="s.confidence+'%'"></div>
-                    </div>
-                    <span class="text-xs px-2 py-0.5 rounded font-bold text-white" :class="{'bg-green-500/20 text-green-400': s.rating.startsWith('A'), 'bg-yellow-500/20 text-yellow-400': s.rating.startsWith('B'), 'bg-red-500/20 text-red-400': s.rating.startsWith('C') || s.rating.startsWith('D')}" x-text="s.rating"></span>
-                  </div>
+
+          <!-- Manual Analysis Result -->
+          <div x-show="manualResult" class="fade-in">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl font-bold text-white" x-text="manualResult?.pair"></span>
+                <span class="text-sm text-muted" x-text="manualResult?.timeframe"></span>
+                <span class="px-3 py-1 rounded-lg text-sm font-bold" :class="manualResult?.direction==='LONG' ? 'bg-neon/10 text-neon' : 'bg-pink/10 text-pink'" x-text="manualResult?.direction"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-1 rounded font-bold text-white" :class="{'bg-green-500/20 text-green-400': manualResult?.rating?.startsWith('A'), 'bg-yellow-500/20 text-yellow-400': manualResult?.rating?.startsWith('B'), 'bg-red-500/20 text-red-400': manualResult?.rating?.startsWith('C') || manualResult?.rating?.startsWith('D')}" x-text="'Rating: '+manualResult?.rating"></span>
+                <span class="text-xs text-muted" x-text="manualResult?.created_at ? new Date(manualResult.created_at).toLocaleString('id-ID') : ''"></span>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-card border border-border rounded-xl p-4 mb-6">
+              <div id="manual-chart" class="w-full h-80 sm:h-96 rounded-lg overflow-hidden"></div>
+            </div>
+
+            <!-- Analysis Cards -->
+            <div class="grid sm:grid-cols-3 gap-4 mb-6">
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Rating</div>
+                <div class="text-4xl font-bold font-mono" :class="{'text-green-400': manualResult?.rating?.startsWith('A'), 'text-yellow-400': manualResult?.rating?.startsWith('B'), 'text-red-400': manualResult?.rating?.startsWith('C') || manualResult?.rating?.startsWith('D')}" x-text="manualResult?.rating"></div>
+              </div>
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Confidence</div>
+                <div class="text-4xl font-bold font-mono" :class="manualResult?.confidence >= 60 ? 'text-neon' : manualResult?.confidence >= 40 ? 'text-acid' : 'text-muted'" x-text="(manualResult?.confidence||0)+'%'"></div>
+              </div>
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Bias</div>
+                <div class="text-4xl font-bold font-mono" :class="manualResult?.bias==='BULLISH' ? 'text-neon' : 'text-pink'" x-text="manualResult?.bias || '—'"></div>
+              </div>
+            </div>
+
+            <!-- Trade Plan -->
+            <div class="bg-card border border-border rounded-xl p-5 mb-6">
+              <h3 class="text-sm font-medium text-muted mb-4">📋 Trade Plan</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div>
+                  <div class="text-xs text-muted mb-1">Direction</div>
+                  <div class="font-bold font-mono" :class="manualResult?.direction==='LONG' ? 'text-neon' : 'text-pink'" x-text="manualResult?.direction"></div>
                 </div>
-                <div class="flex items-center gap-4 mt-1 text-xs text-muted">
-                  <span>Entry: <span class="text-white font-mono" x-text="typeof s.entry_zone === 'object' ? (s.entry_zone.low?.toFixed(2)+' - '+s.entry_zone.high?.toFixed(2)) : s.entry_price?.toFixed(2)"></span></span>
-                  <span>SL: <span class="text-pink font-mono" x-text="s.stop_loss?.toFixed(2)"></span></span>
-                  <span>TP: <span class="text-neon font-mono" x-text="s.tp1?.toFixed(2)"></span></span>
-                  <span>RR: <span class="text-acid font-mono" x-text="s.risk_reward"></span></span>
+                <div>
+                  <div class="text-xs text-muted mb-1">Entry Zone</div>
+                  <div class="font-mono text-sm text-white" x-text="typeof manualResult?.entry_zone === 'object' ? (manualResult.entry_zone.low?.toFixed(2)+' - '+manualResult.entry_zone.high?.toFixed(2)) : manualResult?.entry_price?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">Stop Loss</div>
+                  <div class="font-mono text-sm text-pink" x-text="manualResult?.stop_loss?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">TP 1</div>
+                  <div class="font-mono text-sm text-neon" x-text="manualResult?.tp1?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">TP 2</div>
+                  <div class="font-mono text-sm text-acid" x-text="manualResult?.tp2?.toFixed(2) || '—'"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">Risk:Reward</div>
+                  <div class="font-mono text-sm text-acid font-bold" x-text="manualResult?.risk_reward ? '1:'+manualResult.risk_reward : '—'"></div>
                 </div>
               </div>
-            </template>
-            <div x-show="!feed.length" class="px-5 py-8 text-center text-muted text-sm">Loading signal feed...</div>
+            </div>
+
+            <!-- Confluence -->
+            <div class="bg-card border border-border rounded-xl p-5 mb-6">
+              <h3 class="text-sm font-medium text-muted mb-4">✅ Confluence Factors</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <template x-for="[key, label] in [['bos','Break of Structure'],['choch','Change of Character'],['ob','Order Block'],['fvg','Fair Value Gap'],['volume','Volume Spike'],['orderbook','Orderbook Bias']]" :key="key">
+                  <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded flex items-center justify-center text-xs" :class="manualResult?.confluence_flags?.[key] ? 'bg-neon/20 text-neon' : 'bg-surface text-muted'" x-text="manualResult?.confluence_flags?.[key] ? '✓' : '✗'"></span>
+                    <span class="text-sm" :class="manualResult?.confluence_flags?.[key] ? 'text-white' : 'text-muted'" x-text="label"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Structure JSON -->
+            <div class="bg-card border border-border rounded-xl overflow-hidden" x-data="{ expanded: false }">
+              <button @click="expanded = !expanded" class="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted hover:text-white transition">
+                <span>🔍 Structure Data (JSON)</span>
+                <svg class="w-4 h-4 transition-transform" :class="{'rotate-180': expanded}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div x-show="expanded" x-collapse class="px-5 pb-4">
+                <pre class="text-xs font-mono text-muted bg-surface rounded-lg p-4 overflow-x-auto" x-text="manualResult?.structure ? JSON.stringify(JSON.parse(manualResult.structure), null, 2) : 'No data'"></pre>
+              </div>
+            </div>
+
+            <!-- Fib Levels -->
+            <div class="bg-card border border-border rounded-xl p-5 mt-6" x-show="manualResult?.fib_levels && Object.keys(manualResult.fib_levels).length > 0">
+              <h3 class="text-sm font-medium text-muted mb-4">📐 Fibonacci Levels</h3>
+              <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <template x-for="[level, data] in Object.entries(manualResult?.fib_levels || {})" :key="level">
+                  <div class="text-center bg-surface rounded-lg p-2">
+                    <div class="text-xs text-muted" x-text="level+'%'"></div>
+                    <div class="text-sm font-mono font-bold text-white" x-text="data.price?.toFixed(2)"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div x-show="!manualResult && !manualLoading" class="text-center py-16 text-muted">
+            <div class="text-5xl mb-4">🔍</div>
+            <p class="text-lg font-medium text-white mb-2">Pilih Pair & Timeframe</p>
+            <p class="text-sm">Tekan "Analisa Sekarang" untuk melihat hasil analisa dari King Signal engine.</p>
           </div>
         </div>
       </div>
@@ -466,6 +600,10 @@
         stats: {},
         historyData: { trades: [], total: 0 },
         histFilter: { pair: '', result: '', days: 30 },
+        manualPair: 'BTCUSDT',
+        manualTf: '1h',
+        manualResult: null,
+        manualLoading: false,
         charts: {},
 
         async init() {
@@ -599,6 +737,57 @@
               options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$'+v } } } }
             });
           } catch (e) {}
+        },
+
+        async runManualAnalysis() {
+          this.manualLoading = true;
+          this.manualResult = null;
+          try {
+            const r = await fetch(`${API}/signals?pair=${this.manualPair}&timeframe=${this.manualTf}&limit=1`);
+            const signals = await r.json();
+            this.manualResult = signals[0] || null;
+            if (this.manualResult) {
+              this.$nextTick(() => this.loadManualChart());
+            }
+          } catch (e) { console.warn('manual analysis:', e); }
+          this.manualLoading = false;
+        },
+
+        async loadManualChart() {
+          const container = document.getElementById('manual-chart');
+          if (!container || !this.manualResult) return;
+          container.innerHTML = '';
+          try {
+            const r = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${this.manualResult.pair}&interval=${this.manualResult.timeframe}&limit=200`);
+            const data = await r.json();
+            const chart = LightweightCharts.createChart(container, {
+              layout: { background: { color: '#111827' }, textColor: '#64748b' },
+              grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+              crosshair: { mode: 0 },
+              timeScale: { borderColor: '#1e293b' },
+              rightPriceScale: { borderColor: '#1e293b' },
+            });
+            const candleSeries = chart.addCandlestickSeries({
+              upColor: '#00ff9c', downColor: '#ff3ea5',
+              borderUpColor: '#00ff9c', borderDownColor: '#ff3ea5',
+              wickUpColor: '#00ff9c', wickDownColor: '#ff3ea5',
+            });
+            candleSeries.setData(data.map(d => ({
+              time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]),
+              low: parseFloat(d[3]), close: parseFloat(d[4]),
+            })));
+            const s = this.manualResult;
+            if (s.entry_zone && typeof s.entry_zone === 'object') {
+              candleSeries.createPriceLine({ price: s.entry_zone.low, color: '#00ff9c', lineWidth: 1, lineStyle: 2, title: 'Entry Low' });
+              candleSeries.createPriceLine({ price: s.entry_zone.high, color: '#00ff9c', lineWidth: 1, lineStyle: 2, title: 'Entry High' });
+            }
+            candleSeries.createPriceLine({ price: s.stop_loss, color: '#ff3ea5', lineWidth: 2, lineStyle: 0, title: 'SL' });
+            candleSeries.createPriceLine({ price: s.tp1, color: '#b6ff3c', lineWidth: 1, lineStyle: 0, title: 'TP1' });
+            if (s.tp2) candleSeries.createPriceLine({ price: s.tp2, color: '#b6ff3c', lineWidth: 1, lineStyle: 2, title: 'TP2' });
+            chart.timeScale().fitContent();
+          } catch (e) {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-muted text-sm">Chart unavailable</div>';
+          }
         },
 
         async renderPairChart() {
