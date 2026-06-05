@@ -81,35 +81,38 @@ def generate_analysis_text(pair: str, timeframe: str, direction: str, confluence
                            fib_levels: dict, structure_json: str, confluence_score: int) -> str:
     """Generate human-readable analysis explanation from signal data."""
     parts = []
-    bias_text = "bullish" if direction == "LONG" else "bearish"
     pair_clean = pair.replace("USDT", "")
 
     # Intro
     active_conf = [k for k, v in confluence_flags.items() if v]
     if len(active_conf) >= 5:
-        parts.append(f"Setup {pair_clean} pada {timeframe} menunjukkan konfluensi yang sangat kuat dengan {len(active_conf)} faktor yang saling mengkonfirmasi.")
+        parts.append(f"\n🔥 SETUP KUAT — {pair_clean} {timeframe}")
+        parts.append(f"Konfluensi sangat kuat dengan {len(active_conf)}/6 faktor aktif yang saling mengkonfirmasi.\n")
     elif len(active_conf) >= 4:
-        parts.append(f"Setup {pair_clean} pada {timeframe} memiliki konfluensi yang solid dengan {len(active_conf)} faktor pendukung.")
+        parts.append(f"\n✅ SETUP SOLID — {pair_clean} {timeframe}")
+        parts.append(f"Konfluensi solid dengan {len(active_conf)}/6 faktor pendukung.\n")
     elif len(active_conf) >= 2:
-        parts.append(f"Setup {pair_clean} pada {timeframe} menunjukkan beberapa sinyal, namun konfluensi masih terbatas ({len(active_conf)} faktor).")
+        parts.append(f"\n⚠️ SETUP TERBATAS — {pair_clean} {timeframe}")
+        parts.append(f"Konfluensi terbatas ({len(active_conf)}/6). Perlu konfirmasi tambahan.\n")
     else:
-        parts.append(f"Setup {pair_clean} pada {timeframe} memiliki konfluensi rendah ({len(active_conf)} faktor). Hati-hati dengan sinyal ini.")
+        parts.append(f"\n❌ SETUP LEMAH — {pair_clean} {timeframe}")
+        parts.append(f"Konfluensi rendah ({len(active_conf)}/6). Tidak disarankan entry.\n")
 
     # Structure analysis
-    struct_notes = []
-    if confluence_flags.get("bos"):
-        struct_notes.append("Break of Structure (BoS) terdeteksi — struktur market telah berubah, mengkonfirmasi perubahan tren.")
-    if confluence_flags.get("choch"):
-        struct_notes.append("Change of Character (CHoCH) teridentifikasi — pembalikan arah sudah terkonfirmasi.")
-    if confluence_flags.get("ob"):
-        struct_notes.append("Order Block terdeteksi di zona entry — area di mana smart money kemungkinan besar melakukan akumulasi.")
-    if confluence_flags.get("fvg"):
-        struct_notes.append("Fair Value Gap (FVG) hadir di sekitar entry — harga cenderung tertarik ke area ini untuk mengisi ketidakseimbangan.")
-    if confluence_flags.get("volume"):
-        struct_notes.append("Volume spike terdeteksi — ada peningkatkan aktivitas yang mendukung arah trade.")
-    if confluence_flags.get("orderbook"):
-        struct_notes.append("Analisa orderbook menunjukkan bias yang searah — likuiditas mendukung posisi ini.")
-    parts.extend(struct_notes)
+    if any(confluence_flags.get(k) for k in ["bos", "choch", "ob", "fvg", "volume", "orderbook"]):
+        parts.append("📊 STRUKTUR MARKET:")
+        if confluence_flags.get("bos"):
+            parts.append("  • BoS — Struktur market berubah, tren terkonfirmasi")
+        if confluence_flags.get("choch"):
+            parts.append("  • CHoCH — Pembalikan arah terdeteksi")
+        if confluence_flags.get("ob"):
+            parts.append("  • Order Block — Smart money area teridentifikasi")
+        if confluence_flags.get("fvg"):
+            parts.append("  • FVG — Ketidakseimbangan harga, magnet untuk entry")
+        if confluence_flags.get("volume"):
+            parts.append("  • Volume Spike — Aktivitas tinggi mendukung arah")
+        if confluence_flags.get("orderbook"):
+            parts.append("  • Orderbook — Likuiditas searah dengan posisi")
 
     # Fib analysis
     if fib_levels:
@@ -118,34 +121,42 @@ def generate_analysis_text(pair: str, timeframe: str, direction: str, confluence
             if lv in fib_levels:
                 golden.append(f"{lv}% ({fib_levels[lv]["price"]:.2f})")
         if golden:
-            parts.append(f"Golden zone Fibonacci berada di level {" dan ".join(golden)} — entry berada di area retrace ideal.")
+            parts.append("")
+            parts.append("📐 FIBONACCI:")
+            parts.append(f"  • Golden zone: {" & ".join(golden)}")
+            parts.append(f"  • Entry di area retrace ideal")
 
     # Entry zone
     if entry_zone and isinstance(entry_zone, dict):
         low = entry_zone.get("low", 0)
         high = entry_zone.get("high", 0)
         if low and high:
-            parts.append(f"Zona entry: {low:.2f} - {high:.2f}.")
+            parts.append("")
+            parts.append("🎯 ENTRY ZONE:")
+            parts.append(f"  • Range: {low:.2f} — {high:.2f}")
 
     # Risk assessment
     risk = abs(entry_zone.get("mid", entry_zone.get("price", 0)) - stop_loss) if isinstance(entry_zone, dict) else 0
     reward = abs(tp1 - entry_zone.get("mid", entry_zone.get("price", 0))) if isinstance(entry_zone, dict) else 0
     if risk > 0 and reward > 0:
         rr = reward / risk
+        parts.append("")
+        parts.append("⚖️ RISK:REWARD:")
         if rr >= 3:
-            parts.append(f"Risk:Reward sangat menguntungkan (1:{rr:.1f}) — potensi profit jauh lebih besar dari risiko.")
+            parts.append(f"  • Ratio 1:{rr:.1f} — sangat menguntungkan")
         elif rr >= 2:
-            parts.append(f"Risk:Reward solid (1:{rr:.1f}) — rasio yang layak untuk dieksekusi.")
+            parts.append(f"  • Ratio 1:{rr:.1f} — solid, layak dieksekusi")
         else:
-            parts.append(f"Risk:Reward cukup ketat (1:{rr:.1f}) — pertimbangkan position sizing yang hati-hati.")
+            parts.append(f"  • Ratio 1:{rr:.1f} — ketat, atur position sizing hati-hati")
 
     # Conclusion
+    parts.append("")
     if len(active_conf) >= 4:
-        parts.append("Kesimpulan: Setup ini layak dipertimbangkan untuk entry dengan manajemen risiko yang ketat.")
+        parts.append("✅ KESIMPULAN: Setup layak dipertimbangkan dengan risk management ketat.")
     else:
-        parts.append("Kesimpulan: Konfluensi belum cukup kuat. Disarankan menunggu konfirmasi tambahan sebelum entry.")
+        parts.append("⏳ KESIMPULAN: Tunggu konfirmasi tambahan sebelum entry.")
 
-    return " ".join(parts)
+    return "\n".join(parts)
 
 def format_signal(row: dict) -> dict:
     confluence_score = row.get("confluence_score", 0)

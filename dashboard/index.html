@@ -203,7 +203,7 @@
               <!-- Analysis Explanation -->
               <div class="bg-card border border-neon/20 rounded-xl p-5 mb-4">
                 <h3 class="text-sm font-medium text-neon mb-3">📝 Analisa</h3>
-                <p class="text-sm text-muted leading-relaxed" x-text="mResult.analysis_text"></p>
+                <pre class="text-sm text-muted leading-relaxed whitespace-pre-line font-sans" x-text="mResult.analysis_text"></pre>
               </div>
               <!-- Low confluence warning -->
               <div x-show="!mResult.show_trade_plan" class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 mb-4">
@@ -260,7 +260,7 @@
             </div>
           </template>
 
-          <div x-show="!mResult && !mLoading" class="text-center py-16 text-muted">
+          <div x-show="!mResult && !mLoading && !mSearched" class="text-center py-16 text-muted">
             <div class="text-5xl mb-4">🔍</div>
             <p class="text-lg font-medium text-white mb-2">Pilih Pair & Timeframe</p>
             <p class="text-sm">Tekan <b class="text-neon">"Analisa Sekarang"</b> untuk menjalankan analisa.</p>
@@ -268,6 +268,11 @@
           <div x-show="mLoading" class="text-center py-16 text-muted">
             <div class="text-4xl mb-4 animate-pulse">⏳</div>
             <p>Sedang menganalisa...</p>
+          </div>
+          <div x-show="!mResult && !mLoading && mSearched" class="text-center py-16 text-muted">
+            <div class="text-5xl mb-4">😕</div>
+            <p class="text-lg font-medium text-white mb-2">Tidak Ada Sinyal</p>
+            <p class="text-sm">Belum ada sinyal untuk <b class="text-white" x-text="manualPair.replace('USDT','')+'/'+manualTf"></b>. Coba pair atau timeframe lain.</p>
           </div>
         </div>
       </div>
@@ -371,6 +376,7 @@
         manualTf: '1h',
         mResult: null,
         mLoading: false,
+        mSearched: false,
         charts: {},
 
         async init() {
@@ -417,13 +423,14 @@
         },
 
         async runAnalysis() {
-          this.mLoading = true; this.mResult = null;
+          this.mLoading = true; this.mResult = null; this.mSearched = false;
           try {
             const r = await fetch(API+'/signals?pair='+this.manualPair+'&timeframe='+this.manualTf+'&limit=1');
             const arr = await r.json();
             this.mResult = arr[0] || null;
+            this.mSearched = true;
             if (this.mResult) this.$nextTick(() => this.drawChart());
-          } catch(e) { console.warn('analysis error:', e); }
+          } catch(e) { console.warn('analysis error:', e); this.mSearched = true; }
           this.mLoading = false;
         },
 
