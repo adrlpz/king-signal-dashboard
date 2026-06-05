@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>King Signal — Dashboard</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            bg: '#06080d', surface: '#0b0f17', card: '#111827', border: '#1e293b',
+            neon: '#00ff9c', acid: '#b6ff3c', pink: '#ff3ea5', muted: '#64748b',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #06080d; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .glow-card { box-shadow: 0 0 30px rgba(0,255,156,0.05), 0 4px 20px rgba(0,0,0,0.3); }
+    .glow-card:hover { box-shadow: 0 0 40px rgba(0,255,156,0.1), 0 8px 30px rgba(0,0,0,0.4); }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f17; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="antialiased" x-data="dashboard()" x-init="init()">
+
+  <!-- TOP NAV -->
+  <nav class="fixed top-0 w-full z-50 bg-bg/90 backdrop-blur-xl border-b border-border/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-3">
+          <span class="text-xl">👑</span>
+          <span class="font-bold text-white">King<span class="text-neon">Signal</span></span>
+          <span class="text-xs text-muted hidden sm:inline">Dashboard</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 text-xs">
+            <span class="w-2 h-2 bg-neon rounded-full pulse-dot"></span>
+            <span class="text-muted hidden sm:inline">Live</span>
+          </div>
+          <select x-model="selectedPair" @change="loadSignal()" class="bg-card border border-border text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-neon/50">
+            <option value="BTCUSDT">BTC/USDT</option>
+            <option value="ETHUSDT">ETH/USDT</option>
+            <option value="BNBUSDT">BNB/USDT</option>
+            <option value="SOLUSDT">SOL/USDT</option>
+          </select>
+          <select x-model="selectedTf" @change="loadSignal()" class="bg-card border border-border text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-neon/50">
+            <option value="5m">5m</option>
+            <option value="15m">15m</option>
+            <option value="30m">30m</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="fixed bottom-0 w-full z-50 bg-bg/95 backdrop-blur-xl border-t border-border/50 md:hidden">
+    <div class="flex items-center justify-around py-2">
+      <button @click="tab='overview'" :class="tab==='overview' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        Overview
+      </button>
+      <button @click="tab='signals'" :class="tab==='signals' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        Sinyal
+      </button>
+      <button @click="tab='history'" :class="tab==='history' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </button>
+      <button @click="tab='analytics'" :class="tab==='analytics' ? 'text-neon' : 'text-muted'" class="flex flex-col items-center gap-1 text-xs">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Statistik
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="pt-14 pb-20 md:pb-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- DESKTOP TAB BAR -->
+      <div class="hidden md:flex items-center gap-1 mb-6 bg-surface rounded-lg p-1 w-fit">
+        <button @click="tab='overview'" :class="tab==='overview' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Overview</button>
+        <button @click="tab='signals'" :class="tab==='signals' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Sinyal</button>
+        <button @click="tab='history'" :class="tab==='history' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">History</button>
+        <button @click="tab='analytics'" :class="tab==='analytics' ? 'bg-card text-white' : 'text-muted hover:text-white'" class="px-4 py-2 rounded-md text-sm font-medium transition">Statistik</button>
+      </div>
+
+      <!-- ═══════════ TAB: OVERVIEW ═══════════ -->
+      <div x-show="tab==='overview'" x-transition class="fade-in">
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Win Rate Hari Ini</div>
+            <div class="text-2xl font-bold font-mono text-neon" x-text="overview.today?.win_rate ? overview.today.win_rate+'%' : '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">PnL Hari Ini</div>
+            <div class="text-2xl font-bold font-mono" :class="(overview.today?.pnl||0) >= 0 ? 'text-neon' : 'text-pink'" x-text="overview.today?.pnl ? ((overview.today.pnl>=0?'+':'')+'$'+overview.today.pnl.toFixed(2)) : '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Sinyal Hari Ini</div>
+            <div class="text-2xl font-bold font-mono text-acid" x-text="overview.today?.signals || '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Open Posisi</div>
+            <div class="text-2xl font-bold font-mono text-white" x-text="overview.open_positions ?? '—'"></div>
+          </div>
+        </div>
+
+        <!-- Market Bias -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <template x-for="pair in ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT']" :key="pair">
+            <div class="bg-card border border-border rounded-xl p-4 glow-card cursor-pointer" @click="selectedPair=pair; tab='signals'; loadSignal()">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-bold text-white" x-text="pair.replace('USDT','')"></span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  :class="{
+                    'bg-neon/10 text-neon': overview.pair_bias?.[pair] === 'LONG',
+                    'bg-pink/10 text-pink': overview.pair_bias?.[pair] === 'SHORT',
+                    'bg-muted/10 text-muted': !overview.pair_bias?.[pair] || overview.pair_bias?.[pair] === 'NEUTRAL'
+                  }"
+                  x-text="overview.pair_bias?.[pair] || 'NEUTRAL'"></span>
+              </div>
+              <div class="text-xs text-muted">Klik untuk lihat analisa →</div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Signal Feed -->
+        <div class="bg-card border border-border rounded-xl overflow-hidden">
+          <div class="px-5 py-3 border-b border-border flex items-center justify-between">
+            <h3 class="text-sm font-medium text-muted">📡 Signal Feed (24h)</h3>
+            <span class="text-xs text-muted" x-text="feed.length + ' sinyal'"></span>
+          </div>
+          <div class="max-h-96 overflow-y-auto">
+            <template x-for="s in feed" :key="s.id">
+              <div class="px-5 py-3 border-b border-border/30 hover:bg-surface/50 transition cursor-pointer" @click="selectedPair=s.pair; selectedTf=s.timeframe; loadSignal(); tab='signals'">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs px-2 py-0.5 rounded font-bold" :class="s.direction==='LONG' ? 'bg-neon/10 text-neon' : 'bg-pink/10 text-pink'" x-text="s.direction"></span>
+                    <span class="text-sm font-bold text-white" x-text="s.pair.replace('USDT','')"></span>
+                    <span class="text-xs text-muted" x-text="s.timeframe"></span>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                      <div class="text-xs text-muted">Confidence</div>
+                      <div class="text-sm font-mono font-bold" :class="s.confidence >= 60 ? 'text-neon' : s.confidence >= 40 ? 'text-acid' : 'text-muted'" x-text="s.confidence+'%'"></div>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded font-bold text-white" :class="{'bg-green-500/20 text-green-400': s.rating.startsWith('A'), 'bg-yellow-500/20 text-yellow-400': s.rating.startsWith('B'), 'bg-red-500/20 text-red-400': s.rating.startsWith('C') || s.rating.startsWith('D')}" x-text="s.rating"></span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4 mt-1 text-xs text-muted">
+                  <span>Entry: <span class="text-white font-mono" x-text="typeof s.entry_zone === 'object' ? (s.entry_zone.low?.toFixed(2)+' - '+s.entry_zone.high?.toFixed(2)) : s.entry_price?.toFixed(2)"></span></span>
+                  <span>SL: <span class="text-pink font-mono" x-text="s.stop_loss?.toFixed(2)"></span></span>
+                  <span>TP: <span class="text-neon font-mono" x-text="s.tp1?.toFixed(2)"></span></span>
+                  <span>RR: <span class="text-acid font-mono" x-text="s.risk_reward"></span></span>
+                </div>
+              </div>
+            </template>
+            <div x-show="!feed.length" class="px-5 py-8 text-center text-muted text-sm">Loading signal feed...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ TAB: SIGNAL DETAIL ═══════════ -->
+      <div x-show="tab==='signals'" x-transition class="fade-in">
+        <template x-if="currentSignal">
+          <div>
+            <!-- Signal Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl font-bold text-white" x-text="currentSignal.pair"></span>
+                <span class="text-sm text-muted" x-text="currentSignal.timeframe"></span>
+                <span class="px-3 py-1 rounded-lg text-sm font-bold" :class="currentSignal.direction==='LONG' ? 'bg-neon/10 text-neon' : 'bg-pink/10 text-pink'" x-text="currentSignal.direction"></span>
+                <span class="text-xs text-muted" x-text="new Date(currentSignal.created_at).toLocaleString('id-ID')"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-1 rounded font-bold text-white" :class="{'bg-green-500/20 text-green-400': currentSignal.rating?.startsWith('A'), 'bg-yellow-500/20 text-yellow-400': currentSignal.rating?.startsWith('B'), 'bg-red-500/20 text-red-400': currentSignal.rating?.startsWith('C') || currentSignal.rating?.startsWith('D')}" x-text="'Rating: '+currentSignal.rating"></span>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-card border border-border rounded-xl p-4 mb-6">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-medium text-muted">📈 Chart</h3>
+                <div class="flex gap-1">
+                  <template x-for="tf in ['5m','15m','30m','1h','4h']" :key="tf">
+                    <button @click="selectedTf=tf; loadChart()" :class="selectedTf===tf ? 'bg-neon/20 text-neon' : 'text-muted hover:text-white'" class="px-2 py-1 text-xs rounded" x-text="tf"></button>
+                  </template>
+                </div>
+              </div>
+              <div id="chart-container" class="w-full h-80 sm:h-96 rounded-lg overflow-hidden"></div>
+            </div>
+
+            <!-- Analysis Cards -->
+            <div class="grid sm:grid-cols-3 gap-4 mb-6">
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Rating</div>
+                <div class="text-4xl font-bold font-mono" :class="{'text-green-400': currentSignal.rating?.startsWith('A'), 'text-yellow-400': currentSignal.rating?.startsWith('B'), 'text-red-400': currentSignal.rating?.startsWith('C') || currentSignal.rating?.startsWith('D')}" x-text="currentSignal.rating"></div>
+              </div>
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Confidence</div>
+                <div class="text-4xl font-bold font-mono" :class="currentSignal.confidence >= 60 ? 'text-neon' : currentSignal.confidence >= 40 ? 'text-acid' : 'text-muted'" x-text="currentSignal.confidence+'%'"></div>
+              </div>
+              <div class="bg-card border border-border rounded-xl p-5 text-center glow-card">
+                <div class="text-muted text-xs font-medium uppercase tracking-wider mb-2">Bias</div>
+                <div class="text-4xl font-bold font-mono" :class="currentSignal.bias==='BULLISH' ? 'text-neon' : 'text-pink'" x-text="currentSignal.bias"></div>
+              </div>
+            </div>
+
+            <!-- Trade Plan -->
+            <div class="bg-card border border-border rounded-xl p-5 mb-6">
+              <h3 class="text-sm font-medium text-muted mb-4">📋 Trade Plan</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div>
+                  <div class="text-xs text-muted mb-1">Direction</div>
+                  <div class="font-bold font-mono" :class="currentSignal.direction==='LONG' ? 'text-neon' : 'text-pink'" x-text="currentSignal.direction"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">Entry Zone</div>
+                  <div class="font-mono text-sm text-white" x-text="typeof currentSignal.entry_zone === 'object' ? (currentSignal.entry_zone.low?.toFixed(2)+' - '+currentSignal.entry_zone.high?.toFixed(2)) : currentSignal.entry_price?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">Stop Loss</div>
+                  <div class="font-mono text-sm text-pink" x-text="currentSignal.stop_loss?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">TP 1</div>
+                  <div class="font-mono text-sm text-neon" x-text="currentSignal.tp1?.toFixed(2)"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">TP 2</div>
+                  <div class="font-mono text-sm text-acid" x-text="currentSignal.tp2?.toFixed(2) || '—'"></div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted mb-1">Risk:Reward</div>
+                  <div class="font-mono text-sm text-acid font-bold" x-text="'1:'+currentSignal.risk_reward"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Confluence -->
+            <div class="bg-card border border-border rounded-xl p-5 mb-6">
+              <h3 class="text-sm font-medium text-muted mb-4">✅ Confluence Factors</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <template x-for="[key, label] in [['bos','Break of Structure'],['choch','Change of Character'],['ob','Order Block'],['fvg','Fair Value Gap'],['volume','Volume Spike'],['orderbook','Orderbook Bias']]" :key="key">
+                  <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded flex items-center justify-center text-xs" :class="currentSignal.confluence_flags?.[key] ? 'bg-neon/20 text-neon' : 'bg-surface text-muted'" x-text="currentSignal.confluence_flags?.[key] ? '✓' : '✗'"></span>
+                    <span class="text-sm" :class="currentSignal.confluence_flags?.[key] ? 'text-white' : 'text-muted'" x-text="label"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Structure JSON -->
+            <div class="bg-card border border-border rounded-xl overflow-hidden" x-data="{ expanded: false }">
+              <button @click="expanded = !expanded" class="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-muted hover:text-white transition">
+                <span>🔍 Structure Data (JSON)</span>
+                <svg class="w-4 h-4 transition-transform" :class="{'rotate-180': expanded}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div x-show="expanded" x-collapse class="px-5 pb-4">
+                <pre class="text-xs font-mono text-muted bg-surface rounded-lg p-4 overflow-x-auto" x-text="currentSignal.structure ? JSON.stringify(JSON.parse(currentSignal.structure), null, 2) : 'No data'"></pre>
+              </div>
+            </div>
+
+            <!-- Fib Levels -->
+            <div class="bg-card border border-border rounded-xl p-5 mt-6" x-show="currentSignal.fib_levels && Object.keys(currentSignal.fib_levels).length > 0">
+              <h3 class="text-sm font-medium text-muted mb-4">📐 Fibonacci Levels</h3>
+              <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <template x-for="[level, data] in Object.entries(currentSignal.fib_levels || {})" :key="level">
+                  <div class="text-center bg-surface rounded-lg p-2">
+                    <div class="text-xs text-muted" x-text="level+'%'"></div>
+                    <div class="text-sm font-mono font-bold text-white" x-text="data.price?.toFixed(2)"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div x-show="!currentSignal" class="text-center py-16 text-muted">
+          <div class="text-4xl mb-4">📊</div>
+          <p>Pilih pair di atas atau klik sinyal dari feed untuk lihat analisa detail.</p>
+        </div>
+      </div>
+
+      <!-- ═══════════ TAB: HISTORY ═══════════ -->
+      <div x-show="tab==='history'" x-transition class="fade-in">
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-6">
+          <select x-model="histFilter.pair" @change="loadHistory()" class="bg-card border border-border text-white text-xs rounded-lg px-3 py-2">
+            <option value="">Semua Pair</option>
+            <option value="BTCUSDT">BTC</option>
+            <option value="ETHUSDT">ETH</option>
+            <option value="BNBUSDT">BNB</option>
+            <option value="SOLUSDT">SOL</option>
+          </select>
+          <select x-model="histFilter.result" @change="loadHistory()" class="bg-card border border-border text-white text-xs rounded-lg px-3 py-2">
+            <option value="">Semua Result</option>
+            <option value="win">Win</option>
+            <option value="loss">Loss</option>
+          </select>
+          <select x-model="histFilter.days" @change="loadHistory()" class="bg-card border border-border text-white text-xs rounded-lg px-3 py-2">
+            <option value="7">7 hari</option>
+            <option value="30">30 hari</option>
+            <option value="90">90 hari</option>
+          </select>
+          <span class="text-xs text-muted" x-text="historyData.total + ' trades'"></span>
+        </div>
+
+        <!-- Trades Table -->
+        <div class="bg-card border border-border rounded-xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-muted text-xs uppercase tracking-wider border-b border-border">
+                  <th class="px-4 py-3 text-left">Waktu</th>
+                  <th class="px-4 py-3 text-left">Pair</th>
+                  <th class="px-4 py-3 text-left">TF</th>
+                  <th class="px-4 py-3 text-left">Arah</th>
+                  <th class="px-4 py-3 text-right">Entry</th>
+                  <th class="px-4 py-3 text-right">Exit</th>
+                  <th class="px-4 py-3 text-right">PnL</th>
+                  <th class="px-4 py-3 text-left">Result</th>
+                </tr>
+              </thead>
+              <tbody class="font-mono text-xs">
+                <template x-for="t in historyData.trades" :key="t.id">
+                  <tr class="border-b border-border/30 hover:bg-surface/50 transition">
+                    <td class="px-4 py-3 text-muted" x-text="new Date(t.closed_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})"></td>
+                    <td class="px-4 py-3 text-white font-medium" x-text="t.pair.replace('USDT','')"></td>
+                    <td class="px-4 py-3" x-text="t.timeframe"></td>
+                    <td class="px-4 py-3"><span :class="t.direction==='LONG'?'text-neon':'text-pink'" x-text="t.direction"></span></td>
+                    <td class="px-4 py-3 text-right" x-text="t.entry_price?.toFixed(2)"></td>
+                    <td class="px-4 py-3 text-right" x-text="t.exit_price?.toFixed(2) || '—'"></td>
+                    <td class="px-4 py-3 text-right font-bold" :class="t.pnl_usd >= 0 ? 'text-neon' : 'text-pink'" x-text="(t.pnl_usd>=0?'+':'')+'$'+t.pnl_usd.toFixed(2)"></td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs font-bold" :class="t.result==='WIN' ? 'bg-neon/10 text-neon' : 'bg-pink/10 text-pink'" x-text="t.result"></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div x-show="!historyData.trades?.length" class="px-4 py-8 text-center text-muted text-sm">Loading history...</div>
+        </div>
+      </div>
+
+      <!-- ═══════════ TAB: ANALYTICS ═══════════ -->
+      <div x-show="tab==='analytics'" x-transition class="fade-in">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Win Rate</div>
+            <div class="text-2xl font-bold font-mono text-neon" x-text="stats.win_rate ? stats.win_rate+'%' : '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Total Profit</div>
+            <div class="text-2xl font-bold font-mono" :class="stats.total_pnl >= 0 ? 'text-neon' : 'text-pink'" x-text="stats.total_pnl ? ((stats.total_pnl>=0?'+':'')+'$'+stats.total_pnl.toFixed(2)) : '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Sharpe Ratio</div>
+            <div class="text-2xl font-bold font-mono text-acid" x-text="stats.sharpe || '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4 glow-card">
+            <div class="text-muted text-xs font-medium uppercase tracking-wider mb-1">Max Drawdown</div>
+            <div class="text-2xl font-bold font-mono text-pink" x-text="stats.max_drawdown ? stats.max_drawdown+'%' : '—'"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-card border border-border rounded-xl p-4">
+            <div class="text-muted text-xs mb-1">Total Trades</div>
+            <div class="text-lg font-bold font-mono text-white" x-text="stats.total_trades || '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <div class="text-muted text-xs mb-1">Profit Factor</div>
+            <div class="text-lg font-bold font-mono text-neon" x-text="stats.profit_factor || '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <div class="text-muted text-xs mb-1">Best Trade</div>
+            <div class="text-lg font-bold font-mono text-neon" x-text="stats.best_trade ? '+$'+stats.best_trade.toFixed(2) : '—'"></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <div class="text-muted text-xs mb-1">Worst Trade</div>
+            <div class="text-lg font-bold font-mono text-pink" x-text="stats.worst_trade ? '$'+stats.worst_trade.toFixed(2) : '—'"></div>
+          </div>
+        </div>
+
+        <!-- Streak -->
+        <div class="bg-card border border-border rounded-xl p-5 mb-6" x-show="stats.streak_type">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl" x-text="stats.streak_type === 'WIN' ? '🔥' : '❄️'"></span>
+            <div>
+              <div class="text-sm text-muted">Streak saat ini</div>
+              <div class="text-lg font-bold font-mono" :class="stats.streak_type === 'WIN' ? 'text-neon' : 'text-pink'" x-text="stats.current_streak + 'x ' + stats.streak_type"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid lg:grid-cols-3 gap-6 mb-6">
+          <div class="lg:col-span-2 bg-card border border-border rounded-xl p-5">
+            <h3 class="text-sm font-medium text-muted mb-4">📈 Kurva Profit Kumulatif</h3>
+            <div class="h-64"><canvas id="equity-chart"></canvas></div>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-5">
+            <h3 class="text-sm font-medium text-muted mb-4">💰 Profit Per Pair</h3>
+            <div class="h-64"><canvas id="pair-chart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Per Pair Detail -->
+        <div class="bg-card border border-border rounded-xl p-5">
+          <h3 class="text-sm font-medium text-muted mb-4">📊 Detail Per Pair</h3>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <template x-for="[pair, data] in Object.entries(stats.pairs || {})" :key="pair">
+              <div class="bg-surface rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-bold text-white text-sm" x-text="pair.replace('USDT','')"></span>
+                  <span class="text-xs font-mono" :class="data.pnl >= 0 ? 'text-neon' : 'text-pink'" x-text="(data.pnl>=0?'+':'')+'$'+data.pnl.toFixed(2)"></span>
+                </div>
+                <div class="flex items-center justify-between text-xs text-muted">
+                  <span x-text="data.trades + ' trades'"></span>
+                  <span x-text="data.win_rate + '% win'"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const API = window.location.origin + '/dashboard-api/api';
+
+    function dashboard() {
+      return {
+        tab: 'overview',
+        selectedPair: 'SOLUSDT',
+        selectedTf: '1h',
+        overview: {},
+        feed: [],
+        currentSignal: null,
+        stats: {},
+        historyData: { trades: [], total: 0 },
+        histFilter: { pair: '', result: '', days: 30 },
+        charts: {},
+
+        async init() {
+          await Promise.all([
+            this.loadOverview(),
+            this.loadFeed(),
+            this.loadStats(),
+            this.loadHistory(),
+          ]);
+          this.loadSignal();
+          // Auto-refresh
+          setInterval(() => {
+            this.loadOverview();
+            this.loadFeed();
+          }, 60000);
+        },
+
+        async loadOverview() {
+          try {
+            const r = await fetch(`${API}/overview`);
+            this.overview = await r.json();
+          } catch (e) { console.warn('overview:', e); }
+        },
+
+        async loadFeed() {
+          try {
+            const r = await fetch(`${API}/feed?hours=24`);
+            this.feed = await r.json();
+          } catch (e) { console.warn('feed:', e); }
+        },
+
+        async loadSignal() {
+          try {
+            const r = await fetch(`${API}/signals?pair=${this.selectedPair}&timeframe=${this.selectedTf}&limit=1`);
+            const signals = await r.json();
+            this.currentSignal = signals[0] || null;
+            if (this.currentSignal) this.loadChart();
+          } catch (e) { console.warn('signal:', e); }
+        },
+
+        async loadChart() {
+          const container = document.getElementById('chart-container');
+          if (!container) return;
+          container.innerHTML = '';
+
+          try {
+            const r = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${this.selectedPair}&interval=${this.selectedTf}&limit=200`);
+            const data = await r.json();
+
+            const chart = LightweightCharts.createChart(container, {
+              layout: { background: { color: '#111827' }, textColor: '#64748b' },
+              grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+              crosshair: { mode: 0 },
+              timeScale: { borderColor: '#1e293b' },
+              rightPriceScale: { borderColor: '#1e293b' },
+            });
+
+            const candleSeries = chart.addCandlestickSeries({
+              upColor: '#00ff9c', downColor: '#ff3ea5',
+              borderUpColor: '#00ff9c', borderDownColor: '#ff3ea5',
+              wickUpColor: '#00ff9c', wickDownColor: '#ff3ea5',
+            });
+
+            candleSeries.setData(data.map(d => ({
+              time: d[0] / 1000,
+              open: parseFloat(d[1]),
+              high: parseFloat(d[2]),
+              low: parseFloat(d[3]),
+              close: parseFloat(d[4]),
+            })));
+
+            // Entry/SL/TP lines
+            if (this.currentSignal) {
+              const s = this.currentSignal;
+              const markers = [];
+              const entry = typeof s.entry_zone === 'object' ? s.entry_zone.low : s.entry_price;
+              
+              // Entry zone
+              if (s.entry_zone && typeof s.entry_zone === 'object') {
+                candleSeries.createPriceLine({ price: s.entry_zone.low, color: '#00ff9c', lineWidth: 1, lineStyle: 2, title: 'Entry Low' });
+                candleSeries.createPriceLine({ price: s.entry_zone.high, color: '#00ff9c', lineWidth: 1, lineStyle: 2, title: 'Entry High' });
+              }
+              // SL
+              candleSeries.createPriceLine({ price: s.stop_loss, color: '#ff3ea5', lineWidth: 2, lineStyle: 0, title: 'SL' });
+              // TP1
+              candleSeries.createPriceLine({ price: s.tp1, color: '#b6ff3c', lineWidth: 1, lineStyle: 0, title: 'TP1' });
+              // TP2
+              if (s.tp2) candleSeries.createPriceLine({ price: s.tp2, color: '#b6ff3c', lineWidth: 1, lineStyle: 2, title: 'TP2' });
+            }
+
+            chart.timeScale().fitContent();
+            this.charts.main = chart;
+
+          } catch (e) {
+            console.warn('chart:', e);
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-muted text-sm">Chart unavailable</div>';
+          }
+        },
+
+        async loadStats() {
+          try {
+            const r = await fetch(`${API}/stats`);
+            this.stats = await r.json();
+            this.$nextTick(() => {
+              this.renderEquityChart();
+              this.renderPairChart();
+            });
+          } catch (e) { console.warn('stats:', e); }
+        },
+
+        async loadHistory() {
+          try {
+            const params = new URLSearchParams({ limit: 50, days: this.histFilter.days });
+            if (this.histFilter.pair) params.set('pair', this.histFilter.pair);
+            if (this.histFilter.result) params.set('result', this.histFilter.result);
+            const r = await fetch(`${API}/history?${params}`);
+            this.historyData = await r.json();
+          } catch (e) { console.warn('history:', e); }
+        },
+
+        async renderEquityChart() {
+          try {
+            const r = await fetch(`${API}/equity`);
+            const data = await r.json();
+            const ctx = document.getElementById('equity-chart');
+            if (!ctx) return;
+            if (this.charts.equity) this.charts.equity.destroy();
+            this.charts.equity = new Chart(ctx, {
+              type: 'line',
+              data: { labels: data.labels, datasets: [{ data: data.values, borderColor: '#00ff9c', backgroundColor: 'rgba(0,255,156,0.05)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$'+v } } } }
+            });
+          } catch (e) {}
+        },
+
+        async renderPairChart() {
+          try {
+            const r = await fetch(`${API}/pairs`);
+            const data = await r.json();
+            const ctx = document.getElementById('pair-chart');
+            if (!ctx) return;
+            if (this.charts.pair) this.charts.pair.destroy();
+            this.charts.pair = new Chart(ctx, {
+              type: 'bar',
+              data: { labels: data.labels.map(l => l.replace('USDT','')), datasets: [{ data: data.values, backgroundColor: data.values.map(v => v >= 0 ? 'rgba(0,255,156,0.7)' : 'rgba(255,62,165,0.7)'), borderRadius: 6 }] },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#64748b' } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$'+v } } } }
+            });
+          } catch (e) {}
+        },
+      };
+    }
+  </script>
+</body>
+</html>
