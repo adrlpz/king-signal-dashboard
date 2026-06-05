@@ -75,6 +75,78 @@ def parse_confluence(structure_json: str) -> dict:
     return flags
 
 
+
+def generate_analysis_text(pair: str, timeframe: str, direction: str, confluence_flags: dict,
+                           entry_zone: dict, stop_loss: float, tp1: float, tp2: float,
+                           fib_levels: dict, structure_json: str, confluence_score: int) -> str:
+    """Generate human-readable analysis explanation from signal data."""
+    parts = []
+    bias_text = "bullish" if direction == "LONG" else "bearish"
+    pair_clean = pair.replace("USDT", "")
+
+    # Intro
+    active_conf = [k for k, v in confluence_flags.items() if v]
+    if len(active_conf) >= 5:
+        parts.append(f"Setup {pair_clean} pada {timeframe} menunjukkan konfluensi yang sangat kuat dengan {len(active_conf)} faktor yang saling mengkonfirmasi.")
+    elif len(active_conf) >= 4:
+        parts.append(f"Setup {pair_clean} pada {timeframe} memiliki konfluensi yang solid dengan {len(active_conf)} faktor pendukung.")
+    elif len(active_conf) >= 2:
+        parts.append(f"Setup {pair_clean} pada {timeframe} menunjukkan beberapa sinyal, namun konfluensi masih terbatas ({len(active_conf)} faktor).")
+    else:
+        parts.append(f"Setup {pair_clean} pada {timeframe} memiliki konfluensi rendah ({len(active_conf)} faktor). Hati-hati dengan sinyal ini.")
+
+    # Structure analysis
+    struct_notes = []
+    if confluence_flags.get("bos"):
+        struct_notes.append("Break of Structure (BoS) terdeteksi — struktur market telah berubah, mengkonfirmasi perubahan tren.")
+    if confluence_flags.get("choch"):
+        struct_notes.append("Change of Character (CHoCH) teridentifikasi — pembalikan arah sudah terkonfirmasi.")
+    if confluence_flags.get("ob"):
+        struct_notes.append("Order Block terdeteksi di zona entry — area di mana smart money kemungkinan besar melakukan akumulasi.")
+    if confluence_flags.get("fvg"):
+        struct_notes.append("Fair Value Gap (FVG) hadir di sekitar entry — harga cenderung tertarik ke area ini untuk mengisi ketidakseimbangan.")
+    if confluence_flags.get("volume"):
+        struct_notes.append("Volume spike terdeteksi — ada peningkatkan aktivitas yang mendukung arah trade.")
+    if confluence_flags.get("orderbook"):
+        struct_notes.append("Analisa orderbook menunjukkan bias yang searah — likuiditas mendukung posisi ini.")
+    parts.extend(struct_notes)
+
+    # Fib analysis
+    if fib_levels:
+        golden = []
+        for lv in ["61.8", "78.6"]:
+            if lv in fib_levels:
+                golden.append(f"{lv}% ({fib_levels[lv]["price"]:.2f})")
+        if golden:
+            parts.append(f"Golden zone Fibonacci berada di level {" dan ".join(golden)} — entry berada di area retrace ideal.")
+
+    # Entry zone
+    if entry_zone and isinstance(entry_zone, dict):
+        low = entry_zone.get("low", 0)
+        high = entry_zone.get("high", 0)
+        if low and high:
+            parts.append(f"Zona entry: {low:.2f} - {high:.2f}.")
+
+    # Risk assessment
+    risk = abs(entry_zone.get("mid", entry_zone.get("price", 0)) - stop_loss) if isinstance(entry_zone, dict) else 0
+    reward = abs(tp1 - entry_zone.get("mid", entry_zone.get("price", 0))) if isinstance(entry_zone, dict) else 0
+    if risk > 0 and reward > 0:
+        rr = reward / risk
+        if rr >= 3:
+            parts.append(f"Risk:Reward sangat menguntungkan (1:{rr:.1f}) — potensi profit jauh lebih besar dari risiko.")
+        elif rr >= 2:
+            parts.append(f"Risk:Reward solid (1:{rr:.1f}) — rasio yang layak untuk dieksekusi.")
+        else:
+            parts.append(f"Risk:Reward cukup ketat (1:{rr:.1f}) — pertimbangkan position sizing yang hati-hati.")
+
+    # Conclusion
+    if len(active_conf) >= 4:
+        parts.append("Kesimpulan: Setup ini layak dipertimbangkan untuk entry dengan manajemen risiko yang ketat.")
+    else:
+        parts.append("Kesimpulan: Konfluensi belum cukup kuat. Disarankan menunggu konfirmasi tambahan sebelum entry.")
+
+    return " ".join(parts)
+
 def format_signal(row: dict) -> dict:
     confluence_score = row.get("confluence_score", 0)
     entry = row.get("entry_price") or (json.loads(row["entry_zone"]).get("mid", 0) if row.get("entry_zone") else 0)
@@ -95,6 +167,10 @@ def format_signal(row: dict) -> dict:
         except (json.JSONDecodeError, TypeError):
             pass
 
+    flags = parse_confluence(row.get("structure_json"))
+    active_count = sum(1 for v in flags.values() if v)
+    show_plan = active_count >= 4
+
     return {
         "id": row["id"],
         "pair": row["pair"],
@@ -110,7 +186,14 @@ def format_signal(row: dict) -> dict:
         "bias": "BULLISH" if row["direction"] == "LONG" else "BEARISH",
         "risk_reward": compute_rr(entry, row["stop_loss"], row["tp1"]),
         "confluence_score": confluence_score,
-        "confluence_flags": parse_confluence(row.get("structure_json")),
+        "confluence_count": active_count,
+        "show_trade_plan": show_plan,
+        "confluence_flags": flags,
+        "analysis_text": generate_analysis_text(
+            row["pair"], row["timeframe"], row["direction"], flags,
+            entry_zone, row["stop_loss"], row["tp1"], row.get("tp2"),
+            fib, row.get("structure_json"), confluence_score
+        ),
         "structure": row.get("structure_json"),
         "fib_levels": fib,
         "created_at": row["created_at"],

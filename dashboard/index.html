@@ -200,15 +200,33 @@
                   <div class="text-3xl font-bold font-mono" :class="mResult.bias==='BULLISH'?'text-neon':'text-pink'" x-text="mResult.bias"></div>
                 </div>
               </div>
-              <div class="bg-card border border-border rounded-xl p-5 mb-4">
-                <h3 class="text-sm font-medium text-muted mb-3">📋 Trade Plan</h3>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div><div class="text-xs text-muted mb-1">Direction</div><div class="font-bold font-mono" :class="mResult.direction==='LONG'?'text-neon':'text-pink'" x-text="mResult.direction"></div></div>
-                  <div><div class="text-xs text-muted mb-1">Entry Zone</div><div class="font-mono text-sm text-white" x-text="fmtZone(mResult.entry_zone)"></div></div>
-                  <div><div class="text-xs text-muted mb-1">Stop Loss</div><div class="font-mono text-sm text-pink" x-text="mResult.stop_loss?.toFixed(2)"></div></div>
-                  <div><div class="text-xs text-muted mb-1">TP 1</div><div class="font-mono text-sm text-neon" x-text="mResult.tp1?.toFixed(2)"></div></div>
-                  <div><div class="text-xs text-muted mb-1">TP 2</div><div class="font-mono text-sm text-acid" x-text="mResult.tp2?.toFixed(2)||'—'"></div></div>
-                  <div><div class="text-xs text-muted mb-1">Risk:Reward</div><div class="font-mono text-sm text-acid font-bold" x-text="mResult.risk_reward?'1:'+mResult.risk_reward:'—'"></div></div>
+              <!-- Analysis Explanation -->
+              <div class="bg-card border border-neon/20 rounded-xl p-5 mb-4">
+                <h3 class="text-sm font-medium text-neon mb-3">📝 Analisa</h3>
+                <p class="text-sm text-muted leading-relaxed" x-text="mResult.analysis_text"></p>
+              </div>
+              <!-- Low confluence warning -->
+              <div x-show="!mResult.show_trade_plan" class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 mb-4">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">⚠️</span>
+                  <div>
+                    <div class="text-sm font-bold text-yellow-400">Konfluensi Kurang</div>
+                    <p class="text-xs text-muted mt-1">Hanya <span class="text-white font-bold" x-text="mResult.confluence_count"></span> dari 6 faktor konfluensi yang aktif. Trade plan tidak ditampilkan karena setup belum cukup kuat. Disarankan menunggu konfirmasi tambahan.</p>
+                  </div>
+                </div>
+              </div>
+              <!-- Trade Plan (only if confluence >= 4) -->
+              <div x-show="mResult.show_trade_plan" class="fade-in">
+                <div class="bg-card border border-border rounded-xl p-5 mb-4">
+                  <h3 class="text-sm font-medium text-muted mb-3">📋 Trade Plan</h3>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div><div class="text-xs text-muted mb-1">Direction</div><div class="font-bold font-mono" :class="mResult.direction==='LONG'?'text-neon':'text-pink'" x-text="mResult.direction"></div></div>
+                    <div><div class="text-xs text-muted mb-1">Entry Zone</div><div class="font-mono text-sm text-white" x-text="fmtZone(mResult.entry_zone)"></div></div>
+                    <div><div class="text-xs text-muted mb-1">Stop Loss</div><div class="font-mono text-sm text-pink" x-text="mResult.stop_loss?.toFixed(2)"></div></div>
+                    <div><div class="text-xs text-muted mb-1">TP 1</div><div class="font-mono text-sm text-neon" x-text="mResult.tp1?.toFixed(2)"></div></div>
+                    <div><div class="text-xs text-muted mb-1">TP 2</div><div class="font-mono text-sm text-acid" x-text="mResult.tp2?.toFixed(2)||'—'"></div></div>
+                    <div><div class="text-xs text-muted mb-1">Risk:Reward</div><div class="font-mono text-sm text-acid font-bold" x-text="mResult.risk_reward?'1:'+mResult.risk_reward:'—'"></div></div>
+                  </div>
                 </div>
               </div>
               <div class="bg-card border border-border rounded-xl p-5 mb-4">
